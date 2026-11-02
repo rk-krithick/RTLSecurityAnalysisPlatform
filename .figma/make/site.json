@@ -1,0 +1,10 @@
+{
+  "description": "Analyze RTL designs for potential hardware security weaknesses, then review findings, security properties, and supporting evidence in one workspace.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
