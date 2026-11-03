@@ -337,6 +337,9 @@ svg { flex-shrink: 0; }
 .main-shell, main, .page-heading > div, .toolbar, .breadcrumb { min-width: 0; }
 .topbar { height: 64px; background: var(--surface); }
 .topbar-right { flex-shrink: 0; gap: var(--space-4); }
+.topbar-leading { display: flex; align-items: center; gap: var(--space-3); flex: 1; min-width: 0; }
+.back-button { flex-shrink: 0; min-height: 32px; }
+.back-chevron { transform: rotate(180deg); }
 .breadcrumb { overflow-x: auto; scrollbar-width: none; gap: var(--space-2); }
 .breadcrumb > * { flex-shrink: 0; }
 .breadcrumb .breadcrumb-project { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
@@ -405,6 +408,10 @@ tbody tr[aria-selected="true"] { background: var(--surface-accent); }
 .badge { padding: 3px 7px; border-radius: var(--space-1); font-size: var(--font-xs); line-height: 1.5; font-weight: 500; max-width: 100%; }
 .metric-card, .collection-card { padding: var(--space-4); border-radius: var(--radius-panel); }
 .metrics, .knowledge-collections { gap: var(--space-4); margin-bottom: var(--space-6); }
+.knowledge-collections { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.subsection-heading { margin-bottom: var(--space-5); }
+.subsection-heading h2 { color: var(--text-strong); font-size: var(--font-section); }
+.subsection-heading p { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--font-sm); }
 .metric-foot { flex-wrap: wrap; white-space: normal; gap: var(--space-1) var(--space-2); font-size: var(--font-xs); color: var(--text-muted); }
 .run-row, .finding-row { gap: var(--space-3); padding: var(--space-4) 0; }
 .run-info strong { flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
@@ -524,6 +531,7 @@ tbody tr[aria-selected="true"] { background: var(--surface-accent); }
   .system-online { display: none; }
 }
 @media (max-width: 800px) {
+  .knowledge-collections { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-columns, .dashboard-bottom, .analysis-config { grid-template-columns: minmax(0, 1fr); }
   .page-heading { flex-wrap: wrap; }
   .page-heading > .button { margin-top: 0; }
@@ -534,6 +542,10 @@ tbody tr[aria-selected="true"] { background: var(--surface-accent); }
   .dashboard-footer { flex-wrap: wrap; gap: var(--space-2); }
 }
 @media (max-width: 550px) {
+  .back-button { min-width: 32px; padding: var(--space-2); }
+  .back-button > span { display: none; }
+  .topbar-leading { gap: var(--space-1); }
+  .knowledge-collections { grid-template-columns: minmax(0, 1fr); }
   .app { --sidebar-width: 0px; }
   .sidebar-collapsed { --sidebar-width: 60px; }
   main { padding: var(--space-6) var(--space-4); }

@@ -180,9 +180,7 @@ const navigation: {
   { label: "Design Explorer", icon: "chip" },
   { label: "Analysis Runs", icon: "play", count: "1" },
   { label: "Security Findings", icon: "shield", count: "24" },
-  { label: "Security Properties", icon: "layers" },
   { label: "Evidence and Artifacts", icon: "file" },
-  { label: "Knowledge Base", icon: "book" },
   { label: "Reports", icon: "report" },
 ]
 const initialProjects = [
@@ -299,59 +297,7 @@ const runs = [
   ["RUN-0022", "AES Crypto Engine", "Completed", "1 hour ago", "05:32"],
   ["RUN-0021", "Trusted Boot Controller", "Completed", "Yesterday", "04:18"],
 ]
-const properties = [
-  {
-    name: "Protected register immutability",
-    asset: "Configuration register",
-    module: "access_control",
-    category: "Access control",
-    status: "Violated",
-    confidence: "High",
-    objective:
-      "Once the lock is enabled, the protected register must remain stable until reset.",
-    expression:
-      "assert property (@(posedge clk)\n  disable iff (!rst_n)\n  lock_enable |=> $stable(protected_reg)\n);",
-    finding: 0,
-  },
-  {
-    name: "Key material zeroisation on reset",
-    asset: "AES key storage",
-    module: "key_manager",
-    category: "Confidentiality",
-    status: "Validated",
-    confidence: "High",
-    objective:
-      "Reset must clear sensitive key material and invalidate the active key.",
-    expression: "assert property (@(posedge clk)\n  !rst_n |=> !key_valid\n);",
-    finding: 3,
-  },
-  {
-    name: "Authenticated privilege transition",
-    asset: "Security state",
-    module: "security_controller",
-    category: "Access control",
-    status: "Proposed",
-    confidence: "Moderate",
-    objective:
-      "Transitions to a privileged security state require an authenticated request.",
-    expression:
-      "// Candidate expectation; signal mapping not yet validated.\n// Privileged transitions require authenticated access.",
-    finding: 2,
-  },
-  {
-    name: "Debug interface access restriction",
-    asset: "Debug port",
-    module: "bus_interface",
-    category: "Access control",
-    status: "Unresolved",
-    confidence: "Moderate",
-    objective:
-      "Debug access must not expose protected key material or security state.",
-    expression:
-      "// Candidate expectation; validation remains unresolved.\n// Debug reads must respect the protected asset boundary.",
-    finding: 1,
-  },
-]
+
 const reportNames = [
   "Secure SoC Security Assessment",
   "AES Engine Static Analysis",
@@ -678,6 +624,24 @@ function download(name: string, data: unknown) {
 
 export default function App() {
   const [page, setPage] = useState("Dashboard")
+  const [navigationHistory, setNavigationHistory] = useState<{
+    page: string
+    project: typeof initialProjects[number]
+    finding: typeof findings[number]
+    runId: string
+    report: number
+    file: string
+    tab: string
+    query: string
+    severity: string
+    validation: string
+    logLevel: string
+    progress: number
+    running: boolean
+    step: number
+    collection: string
+    scrollY: number
+  }[]>([])
   const [collapsed, setCollapsed] = useState(false)
   const [projects, setProjects] = useState(initialProjects)
   const [selectedProject, setSelectedProject] = useState(initialProjects[0])
@@ -700,7 +664,6 @@ export default function App() {
   const [progress, setProgress] = useState(6)
   const [running, setRunning] = useState(false)
   const [reviewed, setReviewed] = useState(false)
-  const [selectedProperty, setSelectedProperty] = useState<number | null>(null)
   const [selectedRunId, setSelectedRunId] = useState("RUN-0024")
   const [selectedReport, setSelectedReport] = useState(0)
   const [selectedCollection, setSelectedCollection] = useState("")
@@ -733,6 +696,29 @@ export default function App() {
     window.setTimeout(() => setToast(""), 4200)
   }
   const go = (target: string) => {
+    if (target !== page) {
+      setNavigationHistory((history) => [
+        ...history,
+        {
+          page,
+          project: selectedProject,
+          finding: selectedFinding,
+          runId: selectedRunId,
+          report: selectedReport,
+          file: activeFile,
+          tab: activeTab,
+          query,
+          severity,
+          validation,
+          logLevel,
+          progress,
+          running,
+          step,
+          collection: selectedCollection,
+          scrollY: window.scrollY,
+        },
+      ])
+    }
     if (target === "New Project") {
       setStep(1)
       setProjectName("")
@@ -744,6 +730,29 @@ export default function App() {
     setQuery("")
     setGlobalSearch(false)
     window.scrollTo(0, 0)
+  }
+  const goBack = () => {
+    const previous = navigationHistory[navigationHistory.length - 1]
+    if (!previous) return
+    setNavigationHistory((history) => history.slice(0, -1))
+    setPage(previous.page)
+    setSelectedProject(previous.project)
+    setSelectedFinding(previous.finding)
+    setSelectedRunId(previous.runId)
+    setSelectedReport(previous.report)
+    setActiveFile(previous.file)
+    setActiveTab(previous.tab)
+    setQuery(previous.query)
+    setSeverity(previous.severity)
+    setValidation(previous.validation)
+    setLogLevel(previous.logLevel)
+    setProgress(previous.progress)
+    setRunning(previous.running)
+    setStep(previous.step)
+    setSelectedCollection(previous.collection)
+    setGlobalSearch(false)
+    setModal("")
+    window.requestAnimationFrame(() => window.scrollTo(0, previous.scrollY))
   }
   useEffect(() => {
     if (!running) return
@@ -816,6 +825,7 @@ export default function App() {
       "New Security Analysis": "Analysis Runs",
       "Dynamic Security Testing": "Analysis Runs",
       "Waveform Viewer": "Evidence and Artifacts",
+      "Knowledge Base": "Evidence and Artifacts",
       "Report Preview": "Reports",
       "Design System": "Help & Documentation",
     } as Record<string, string>)[page] || page
@@ -871,8 +881,6 @@ export default function App() {
           ? "Running"
           : "Partial"
       : runs.find((r) => r[0] === selectedRunId)?.[2] || "Partial"
-  const property =
-    selectedProperty === null ? null : properties[selectedProperty]
   const reportProject =
     projects.find((p) => p.name === reportProjectNames[selectedReport]) ||
     projects[0]
@@ -887,6 +895,11 @@ export default function App() {
       sub: "Workspace page",
       action: () => go(n.label),
     })),
+    {
+      name: "Knowledge Base",
+      sub: "Evidence and Artifacts",
+      action: () => go("Knowledge Base"),
+    },
     ...projects.map((p) => ({
       name: p.name,
       sub: "Project",
@@ -916,6 +929,20 @@ export default function App() {
         onChange={(e) => onChange?.(e.target.value)}
       />
     </label>
+  )
+  const evidenceTabs = () => (
+    <Tabs
+      items={["Artifacts", "Knowledge Base"]}
+      value={page === "Knowledge Base" ? "Knowledge Base" : "Artifacts"}
+      onChange={(tab) =>
+        go(
+          tab === "Knowledge Base"
+            ? "Knowledge Base"
+            : "Evidence and Artifacts",
+        )
+      }
+      label="Evidence and Artifacts sections"
+    />
   )
 
   function projectTable() {
@@ -1787,13 +1814,7 @@ export default function App() {
               <Panel title="Associated findings">{findingsList()}</Panel>
               <div className="info-banner">
                 Generated security properties are candidates, not proof of
-                design correctness.{" "}
-                <button
-                  className="text-link"
-                  onClick={() => go("Security Properties")}
-                >
-                  Review properties <Icon name="arrow" size={14} />
-                </button>
+                design correctness.
               </div>
             </>
           ) : (
@@ -1871,20 +1892,13 @@ export default function App() {
                 ))}
                 <hr />
                 <h4>RELATED SECURITY</h4>
-                <button
-                  className="related-card"
-                  onClick={() => {
-                    setSelectedProperty(0)
-                    go("Security Properties")
-                  }}
-                >
+                <div className="related-card">
                   <Icon name="layers" size={16} />
                   <div>
                     <strong>PROP-0012</strong>
                     <span>Protected register immutability</span>
                   </div>
-                  <Icon name="chevron" size={12} />
-                </button>
+                </div>
                 <button
                   className="related-card"
                   onClick={() => openFinding(findings[0])}
@@ -2507,21 +2521,19 @@ export default function App() {
                     </dd>
                     <dt>Security property</dt>
                     <dd>
-                      <button
-                        className="text-link"
-                        onClick={() => {
-                          setSelectedProperty(
-                            [0, 3, 2, 1, null][
-                              findings.indexOf(selectedFinding)
-                            ],
-                          )
-                          go("Security Properties")
-                        }}
-                      >
-                        {selectedFinding.id === "FIND-0005"
-                          ? "Review candidate properties"
-                          : `PROP-00${12 + [0, 3, 2, 1][findings.indexOf(selectedFinding)]} · ${properties[[0, 3, 2, 1][findings.indexOf(selectedFinding)]]?.name}`}
-                      </button>
+                      <span>
+                        {({
+                          "FIND-0001":
+                            "PROP-0012 · Protected register immutability",
+                          "FIND-0002":
+                            "PROP-0015 · Debug interface access restriction",
+                          "FIND-0003":
+                            "PROP-0014 · Authenticated privilege transition",
+                          "FIND-0004":
+                            "PROP-0013 · Key material zeroisation on reset",
+                        } as Record<string, string>)[selectedFinding.id] ||
+                          "No related property recorded"}
+                      </span>
                     </dd>
                     <dt>Weakness category</dt>
                     <dd>{selectedFinding.category}</dd>
@@ -2570,125 +2582,7 @@ export default function App() {
           </div>
         </>
       )
-    if (page === "Security Properties")
-      return (
-        <>
-          <PageHeader
-            title="Security Properties"
-            subtitle="Explore the security expectations inferred from your hardware design."
-            action={<Badge tone="neutral">Candidate properties · demo</Badge>}
-          />
-          <div className="small-metrics">
-            {[
-              ["Total properties", 32],
-              ["Validated", 12],
-              ["Violated", 3],
-              ["Proposed", 8],
-              ["Unresolved", 9],
-            ].map(([s, n]) => (
-              <div key={s}>
-                <span>{s}</span>
-                <strong>{n}</strong>
-              </div>
-            ))}
-          </div>
-          <div className="info-banner">
-            <Icon name="help" />
-            <span>
-              Generated properties are candidate expectations. Successful
-              generation does not establish correctness or validation.
-            </span>
-          </div>
-          <Panel title="Property library">
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Property</th>
-                    <th scope="col">Protected asset</th>
-                    <th scope="col">Module</th>
-                    <th scope="col">Category</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {properties.map((p, i) => (
-                    <InteractiveRow
-                      key={p.name}
-                      onClick={() => setSelectedProperty(i)}
-                      aria-selected={selectedProperty === i}
-                    >
-                      <td>
-                        <code className="small-id">PROP-00{12 + i}</code>
-                        <strong className="block">{p.name}</strong>
-                      </td>
-                      <td>{p.asset}</td>
-                      <td>
-                        <code>{p.module}</code>
-                      </td>
-                      <td>{p.category}</td>
-                      <td>
-                        <Badge>{p.status}</Badge>
-                      </td>
-                      <td>{p.confidence}</td>
-                    </InteractiveRow>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
-          {property && selectedProperty !== null && (
-            <Panel
-              title={`PROP-00${12 + selectedProperty} · ${property.name}`}
-              action={
-                <button
-                  className="icon-button"
-                  aria-label="Close property details"
-                  onClick={() => setSelectedProperty(null)}
-                >
-                  <Icon name="close" />
-                </button>
-              }
-            >
-              <div className="prose">
-                <div className="metadata-field">
-                  <span>Validation result</span>
-                  <Badge>{property.status}</Badge>
-                </div>
-                <h3>Security objective</h3>
-                <p>
-                  {property.objective} Protected asset: {property.asset} in{" "}
-                  <code>{property.module}</code>.
-                </p>
-                <h4>CANDIDATE PROPERTY EXPRESSION · SVA</h4>
-                <pre className="property-code">{property.expression}</pre>
-                <div className="relationship-links">
-                  <Button
-                    icon="code"
-                    onClick={() => openSource(property.module)}
-                  >
-                    Supporting RTL
-                  </Button>
-                  <Button
-                    icon="shield"
-                    onClick={() => openFinding(findings[property.finding])}
-                  >
-                    Related {findings[property.finding].id}
-                  </Button>
-                  <Button
-                    icon="activity"
-                    disabled={selectedProperty !== 0}
-                    onClick={() => openWaveform()}
-                  >
-                    Waveform evidence
-                  </Button>
-                </div>
-              </div>
-            </Panel>
-          )}
-        </>
-      )
+
     if (page === "Evidence and Artifacts")
       return (
         <>
@@ -2710,6 +2604,7 @@ export default function App() {
               </Button>
             }
           />
+          {evidenceTabs()}
           <div className="toolbar">
             <Search
               value={query}
@@ -2988,16 +2883,10 @@ export default function App() {
                   </code>
                 </dd>
               </dl>
-              <button
-                className="text-link"
-                onClick={() => {
-                  setSelectedProperty(0)
-                  go("Security Properties")
-                }}
-              >
-                PROP-0012
-                <Icon name="arrow" size={14} />
-              </button>
+              <div className="metadata-field">
+                <span>Related property</span>
+                <code>PROP-0012</code>
+              </div>
             </aside>
           </div>
           <div className="dashboard-columns">
@@ -3032,16 +2921,9 @@ export default function App() {
                   protected register interface. The access-control assertion
                   failed.
                 </p>
-                <button
-                  className="text-link"
-                  onClick={() => {
-                    setSelectedProperty(0)
-                    go("Security Properties")
-                  }}
-                >
-                  PROP-0012 · Protected register immutability
-                  <Icon name="arrow" size={14} />
-                </button>
+                <p className="muted">
+                  <code>PROP-0012</code> · Protected register immutability
+                </p>
               </div>
             </Panel>
           </div>
@@ -3194,7 +3076,7 @@ export default function App() {
       return (
         <>
           <PageHeader
-            title="Knowledge Base"
+            title="Evidence and Artifacts"
             subtitle="Manage the technical knowledge sources used during security analysis."
             action={
               <Button
@@ -3206,14 +3088,16 @@ export default function App() {
               </Button>
             }
           />
+          {evidenceTabs()}
+          <div className="subsection-heading">
+            <h2>Knowledge Base</h2>
+            <p>
+              Supporting documentation, security references, and reviewed
+              analysis history.
+            </p>
+          </div>
           <div className="knowledge-collections">
             {[
-              [
-                "book",
-                "Research & publications",
-                "12 sources",
-                "Technical studies and papers",
-              ],
               [
                 "shield",
                 "Weaknesses & standards",
@@ -4022,44 +3906,61 @@ export default function App() {
       </aside>
       <div className="main-shell">
         <header className="topbar">
-          <nav className="breadcrumb" aria-label="Breadcrumb">
+          <div className="topbar-leading">
             <button
-              className="mobile-menu icon-button"
-              onClick={() => setCollapsed(!collapsed)}
-              aria-label="Toggle sidebar"
+              type="button"
+              className="button back-button"
+              onClick={goBack}
+              disabled={navigationHistory.length === 0}
+              aria-label="Go back"
+              title={
+                navigationHistory.length
+                  ? `Back to ${navigationHistory[navigationHistory.length - 1].page}`
+                  : "No previous page"
+              }
             >
-              <Icon name="collapse" />
+              <Icon name="chevron" size={14} className="back-chevron" />
+              <span>Back</span>
             </button>
-            <Icon name="grid" size={15} />
-            <button onClick={() => go("Dashboard")}>Workspace</button>
-            <Icon name="chevron" size={12} />
-            {activeSection !== page && activeSection !== "Projects" && (
-              <>
-                <button onClick={() => go(activeSection)}>
-                  {activeSection}
-                </button>
-                <Icon name="chevron" size={12} />
-              </>
-            )}
-            {activeSection === "Projects" && (
-              <>
-                <button onClick={() => go("Projects")}>Projects</button>
-                <Icon name="chevron" size={12} />
-              </>
-            )}
-            {projectContext && (
-              <>
-                <button
-                  className="breadcrumb-project"
-                  onClick={() => go("Project Workspace")}
-                >
-                  {selectedProject.name}
-                </button>
-                <Icon name="chevron" size={12} />
-              </>
-            )}
-            <span aria-current="page">{title}</span>
-          </nav>
+            <nav className="breadcrumb" aria-label="Breadcrumb">
+              <button
+                className="mobile-menu icon-button"
+                onClick={() => setCollapsed(!collapsed)}
+                aria-label="Toggle sidebar"
+              >
+                <Icon name="collapse" />
+              </button>
+              <Icon name="grid" size={15} />
+              <button onClick={() => go("Dashboard")}>Workspace</button>
+              <Icon name="chevron" size={12} />
+              {activeSection !== page && activeSection !== "Projects" && (
+                <>
+                  <button onClick={() => go(activeSection)}>
+                    {activeSection}
+                  </button>
+                  <Icon name="chevron" size={12} />
+                </>
+              )}
+              {activeSection === "Projects" && (
+                <>
+                  <button onClick={() => go("Projects")}>Projects</button>
+                  <Icon name="chevron" size={12} />
+                </>
+              )}
+              {projectContext && (
+                <>
+                  <button
+                    className="breadcrumb-project"
+                    onClick={() => go("Project Workspace")}
+                  >
+                    {selectedProject.name}
+                  </button>
+                  <Icon name="chevron" size={12} />
+                </>
+              )}
+              <span aria-current="page">{title}</span>
+            </nav>
+          </div>
           <div className="topbar-right">
             <button
               className="global-search"
@@ -4173,7 +4074,6 @@ export default function App() {
                     onChange={(e) => setDocumentCollection(e.target.value)}
                   >
                     <option>Project documentation</option>
-                    <option>Research & publications</option>
                     <option>Weaknesses & standards</option>
                     <option>Reviewed analysis history</option>
                   </select>
