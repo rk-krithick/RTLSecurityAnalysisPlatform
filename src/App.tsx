@@ -321,7 +321,7 @@ const artifacts = [
   ["security_assertions.json", "Assertion Results", "18 KB"],
   ["module_dependencies.graphml", "Graph Snapshot", "124 KB"],
   ["static_analysis.log", "Execution Log", "84 KB"],
-  ["rtl_source_a3f72c1.zip", "RTL Source Snapshot", "412 KB"],
+  ["rtl_source_snapshot.zip", "RTL Source Snapshot", "412 KB"],
 ]
 const logMessages: Record<string, string[]> = {
   Operational: [
@@ -685,7 +685,7 @@ export default function App() {
   const [indexing, setIndexing] = useState(false)
   const [docName, setDocName] = useState("")
   const [documents, setDocuments] = useState([
-    "SoC security architecture v2.1.pdf",
+    "SoC security architecture.pdf",
     "CWE Hardware Design View",
     "Access control security requirements.md",
     "Reviewed findings — Secure SoC",
@@ -1364,7 +1364,7 @@ export default function App() {
                   [
                     "book",
                     "Knowledge source indexed",
-                    "SoC security architecture v2.1.pdf",
+                    "SoC security architecture.pdf",
                     "42 min ago",
                     "blue",
                   ],
@@ -1525,19 +1525,16 @@ export default function App() {
                         rows={3}
                       />
                     </label>
-                    <div className="form-grid">
-                      <label className="field">
-                        Project category
-                        <select>
-                          <option>Root of Trust</option>
-                          <option>SoC</option>
-                          <option>Cryptographic IP</option>
-                          <option>Security Controller</option>
-                          <option>Other</option>
-                        </select>
-                      </label>
-                      {field("Project version", "v1.0.0")}
-                    </div>
+                    <label className="field">
+                      Project category
+                      <select>
+                        <option>Root of Trust</option>
+                        <option>SoC</option>
+                        <option>Cryptographic IP</option>
+                        <option>Security Controller</option>
+                        <option>Other</option>
+                      </select>
+                    </label>
                   </>
                 )}
                 {step === 2 && (
@@ -1609,8 +1606,6 @@ export default function App() {
                       detect top module
                     </label>
                     {field("Include directories", "./rtl/include, ./common")}
-                    {field("Additional compile options", "-DSYNTHESIS")}
-                    {field("Target design version", "v1.0.0")}
                   </>
                 )}
                 {step === 4 && (
@@ -1737,11 +1732,6 @@ export default function App() {
           />
           <div className="project-meta">
             <Badge tone="purple">{selectedProject.lang}</Badge>
-            <span>v2.1.0</span>
-            <span>
-              <Icon name="branch" size={14} />
-              <code>main · a3f72c1</code>
-            </span>
             <span>Updated 12 minutes ago</span>
           </div>
           <div className="small-metrics">
@@ -1924,7 +1914,7 @@ export default function App() {
           />
           <div className="analysis-config">
             <div>
-              <Panel title="Project & revision">
+              <Panel title="Project">
                 <div className="form-body">
                   <label className="field">
                     Project
@@ -1941,11 +1931,6 @@ export default function App() {
                       ))}
                     </select>
                   </label>
-                  <div className="revision-box">
-                    <Icon name="branch" />
-                    <code>main · a3f72c1</code>
-                    <Badge tone="green">Latest revision</Badge>
-                  </div>
                 </div>
               </Panel>
               <Panel title="Analysis type">
@@ -2016,10 +2001,6 @@ export default function App() {
                 <dl className="detail-list">
                   <dt>Engine</dt>
                   <dd>Static Security Analysis</dd>
-                  <dt>Revision</dt>
-                  <dd>
-                    <code>a3f72c1</code>
-                  </dd>
                   <dt>Processing</dt>
                   <dd>Local</dd>
                   <dt>Source files</dt>
@@ -2061,7 +2042,7 @@ export default function App() {
         <>
           <PageHeader
             title="Analysis Runs"
-            subtitle="Trace every analysis from source revision to supporting evidence."
+            subtitle="Trace every analysis from RTL source to supporting evidence."
             action={
               <Button
                 primary
@@ -3336,9 +3317,7 @@ export default function App() {
             </div>
             <div className="eyebrow">STATIC SECURITY ASSESSMENT</div>
             <h1>{reportProject.name}</h1>
-            <p className="muted">
-              Revision a3f72c1 · October 24, 2025 · Internal research
-            </p>
+            <p className="muted">October 24, 2025 · Internal research</p>
             <div className="report-rule" />
             <h2>01. Executive summary</h2>
             <p>
@@ -3373,7 +3352,7 @@ export default function App() {
             <h2>04. Evidence & traceability</h2>
             <p>
               {selectedReport === 0
-                ? "Source snapshot a3f72c1, candidate property PROP-0012, and the illustrative register access waveform are linked to FIND-0001."
+                ? "The RTL source snapshot, candidate property PROP-0012, and the illustrative register access waveform are linked to FIND-0001."
                 : "Supporting source and evidence artifacts are not included in this illustrative report preview."}
             </p>
             <h2>05. Limitations and assumptions</h2>
@@ -3383,10 +3362,10 @@ export default function App() {
               prototype. No reportable findings would not establish that the
               design is secure.
             </p>
-            <h2>06. Tool & version information</h2>
+            <h2>06. Tool information</h2>
             <p>
-              RTL Security Analyzer · UI prototype v0.1. All records in this
-              report are illustrative.
+              RTL Security Analyzer · UI prototype. All records in this report
+              are illustrative.
             </p>
           </article>
         </>
@@ -3865,7 +3844,6 @@ export default function App() {
           <div className="local-status">
             <span className="status-dot" />
             <span>Local environment</span>
-            <Badge tone="neutral">v0.1.0</Badge>
           </div>
           {[
             { label: "Logs", icon: "terminal" },
@@ -4111,7 +4089,7 @@ export default function App() {
                   </span>
                   <div>
                     <strong>Knowledge source indexed</strong>
-                    <span>SoC security architecture v2.1.pdf</span>
+                    <span>SoC security architecture.pdf</span>
                   </div>
                 </div>
               </div>
