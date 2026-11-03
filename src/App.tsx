@@ -5,6 +5,12 @@ import {
   type ReactNode,
   type ComponentProps,
 } from "react"
+import {
+  droppedProjectFiles,
+  mergeProjectFiles,
+  projectFiles,
+  type ProjectFile,
+} from "./project-upload"
 
 type IconName = "grid" | "folder" | "chip" | "play" | "shield" | "layers" | "file" | "book" | "report" | "terminal" | "settings" | "help" | "chevron" | "search" | "bell" | "plus" | "arrow" | "clock" | "check" | "close" | "upload" | "download" | "filter" | "code" | "activity" | "collapse" | "external" | "more" | "branch"
 function Icon({
@@ -657,8 +663,9 @@ export default function App() {
   const [period, setPeriod] = useState("Last 30 days")
   const [step, setStep] = useState(1)
   const [projectName, setProjectName] = useState("")
-  const [files, setFiles] = useState<File[]>([])
+  const [files, setFiles] = useState<ProjectFile[]>([])
   const [fileError, setFileError] = useState("")
+  const [readingFolder, setReadingFolder] = useState(false)
   const [activeTab, setActiveTab] = useState("Source code")
   const [activeFile, setActiveFile] = useState("access_control")
   const [progress, setProgress] = useState(6)
@@ -691,6 +698,8 @@ export default function App() {
     "Reviewed findings — Secure SoC",
   ])
   const fileInput = useRef<HTMLInputElement>(null)
+  const folderInput = useRef<HTMLInputElement>(null)
+  const uploadGeneration = useRef(0)
   const notify = (message: string) => {
     setToast(message)
     window.setTimeout(() => setToast(""), 4200)
@@ -720,10 +729,12 @@ export default function App() {
       ])
     }
     if (target === "New Project") {
+      uploadGeneration.current += 1
       setStep(1)
       setProjectName("")
       setFiles([])
       setFileError("")
+      setReadingFolder(false)
     }
     if (target === "Design Explorer") setActiveTab("Source code")
     setPage(target)
@@ -1459,8 +1470,7 @@ export default function App() {
             <aside className="wizard-steps">
               {[
                 "Project information",
-                "Upload RTL source",
-                "Design configuration",
+                "Upload project source",
                 "Project context",
                 "Review & create",
               ].map((s, i) => (
@@ -1478,8 +1488,7 @@ export default function App() {
                       {
                         [
                           "Name and organise your design",
-                          "Add files or a project archive",
-                          "Set language and top module",
+                          "Add a folder or individual files",
                           "Optional supporting documents",
                           "Confirm project details",
                         ][i]
@@ -1500,13 +1509,12 @@ export default function App() {
               title={
                 [
                   "Project information",
-                  "Upload RTL source",
-                  "Design configuration",
+                  "Upload project source",
                   "Project context",
                   "Ready to create your project",
                 ][step - 1]
               }
-              subtitle={`Step ${step} of 5`}
+              subtitle={`Step ${step} of 4`}
               className="wizard-panel"
             >
               <div className="form-body">
@@ -1541,74 +1549,130 @@ export default function App() {
                   <>
                     <div
                       className="upload-zone"
+                      aria-busy={readingFolder}
                       onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
+                      onDrop={async (e) => {
                         e.preventDefault()
-                        addFiles(Array.from(e.dataTransfer.files))
+                        if (readingFolder) return
+                        const generation = uploadGeneration.current
+                        setReadingFolder(true)
+                        setFileError("")
+                        try {
+                          const incoming = await droppedProjectFiles(
+                            e.dataTransfer,
+                          )
+                          if (generation !== uploadGeneration.current) return
+                          if (incoming.length === 0)
+                            setFileError(
+                              "No files were found. Choose a folder containing project files or browse for individual files.",
+                            )
+                          else
+                            setFiles((previous) =>
+                              mergeProjectFiles(previous, incoming),
+                            )
+                        } catch {
+                          if (generation === uploadGeneration.current)
+                            setFileError(
+                              "Could not read the dropped folder. Try Browse folder or select individual files.",
+                            )
+                        } finally {
+                          if (generation === uploadGeneration.current)
+                            setReadingFolder(false)
+                        }
                       }}
                     >
                       <span className="upload-icon">
                         <Icon name="upload" size={24} />
                       </span>
-                      <h3>Drop your RTL source files here</h3>
-                      <p>Upload a ZIP archive or individual HDL files</p>
-                      <Button onClick={() => fileInput.current?.click()}>
-                        Browse files
-                      </Button>
-                      <small>.v, .sv, .vh, .svh, .vhd, .vhdl, .zip</small>
+                      <h3>
+                        {readingFolder
+                          ? "Reading project folder…"
+                          : "Drop a project folder or files here"}
+                      </h3>
+                      <p>
+                        Include your project’s subfolders, source files, and
+                        supporting documents.
+                      </p>
+                      <div className="upload-actions">
+                        <Button
+                          primary
+                          icon="folder"
+                          disabled={readingFolder}
+                          onClick={() => folderInput.current?.click()}
+                        >
+                          Browse folder
+                        </Button>
+                        <Button
+                          icon="file"
+                          disabled={readingFolder}
+                          onClick={() => fileInput.current?.click()}
+                        >
+                          Browse files
+                        </Button>
+                      </div>
+                      <small>
+                        All file types accepted. Folder structure is preserved.
+                      </small>
                     </div>
                     <input
                       hidden
                       type="file"
                       multiple
                       ref={fileInput}
-                      accept=".v,.sv,.vh,.svh,.vhd,.vhdl,.zip"
-                      onChange={(e) =>
+                      aria-label="Select project files"
+                      onChange={(e) => {
                         addFiles(Array.from(e.target.files || []))
-                      }
+                        e.target.value = ""
+                      }}
+                    />
+                    <input
+                      hidden
+                      type="file"
+                      multiple
+                      ref={folderInput}
+                      {...{ webkitdirectory: "" }}
+                      aria-label="Select project folder"
+                      onChange={(e) => {
+                        addFiles(Array.from(e.target.files || []))
+                        e.target.value = ""
+                      }}
                     />
                     {fileError && (
-                      <div className="error-message">{fileError}</div>
-                    )}
-                    {files.map((f, i) => (
-                      <div className="uploaded-file" key={f.name}>
-                        <Icon name="file" />
-                        <span>
-                          {f.name}
-                          <small>{(f.size / 1024).toFixed(1)} KB</small>
-                        </span>
-                        <Badge tone="green">Ready</Badge>
-                        <button
-                          className="icon-button"
-                          onClick={() =>
-                            setFiles(files.filter((_, n) => i !== n))
-                          }
-                        >
-                          <Icon name="close" size={14} />
-                        </button>
+                      <div className="error-message" role="alert">
+                        {fileError}
                       </div>
-                    ))}
+                    )}
+                    {files.length > 0 && (
+                      <div className="upload-summary" role="status">
+                        {files.length} files selected
+                      </div>
+                    )}
+                    <div className="uploaded-files">
+                      {files.map(({ file, path }) => (
+                        <div className="uploaded-file" key={path}>
+                          <Icon name="file" />
+                          <span>
+                            <code>{path}</code>
+                            <small>{(file.size / 1024).toFixed(1)} KB</small>
+                          </span>
+                          <Badge tone="green">Ready</Badge>
+                          <button
+                            className="icon-button"
+                            aria-label={`Remove ${path}`}
+                            onClick={() =>
+                              setFiles((previous) =>
+                                previous.filter((item) => item.path !== path),
+                              )
+                            }
+                          >
+                            <Icon name="close" size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </>
                 )}
                 {step === 3 && (
-                  <>
-                    <label className="field">
-                      Primary HDL language
-                      <select>
-                        <option>SystemVerilog</option>
-                        <option>Verilog</option>
-                        <option>VHDL (planned)</option>
-                      </select>
-                    </label>
-                    {field("Top module", "soc_security_top")}
-                    <label className="check-label">
-                      <input type="checkbox" defaultChecked /> Automatically
-                      detect top module
-                    </label>
-                    {field("Include directories", "./rtl/include, ./common")}
-                  </>
-                )}
-                {step === 4 && (
                   <>
                     <div className="info-banner">
                       <Icon name="book" />
@@ -1636,24 +1700,20 @@ export default function App() {
                     </Button>
                   </>
                 )}
-                {step === 5 && (
+                {step === 4 && (
                   <>
                     <div className="success-heading">
                       <Icon name="check" size={26} />
                       <h3>Your workspace is ready</h3>
                       <p>
-                        Review your configuration before creating the project.
+                        Review your project details before creating the project.
                       </p>
                     </div>
                     <dl className="detail-list">
                       <dt>Project name</dt>
                       <dd>{projectName}</dd>
-                      <dt>HDL language</dt>
-                      <dd>SystemVerilog</dd>
-                      <dt>Top module</dt>
-                      <dd>Automatic detection</dd>
-                      <dt>Source files</dt>
-                      <dd>{files.length} uploaded files</dd>
+                      <dt>Project files</dt>
+                      <dd>{files.length} selected files</dd>
                       <dt>Processing</dt>
                       <dd>Local workspace</dd>
                     </dl>
@@ -1676,10 +1736,10 @@ export default function App() {
                   primary
                   disabled={
                     (step === 1 && !projectName.trim()) ||
-                    (step === 2 && !files.length)
+                    (step === 2 && (!files.length || readingFolder))
                   }
                   onClick={() => {
-                    if (step < 5) setStep(step + 1)
+                    if (step < 4) setStep(step + 1)
                     else {
                       const p = {
                         ...initialProjects[0],
@@ -1690,6 +1750,8 @@ export default function App() {
                         status: "Not analysed",
                         time: "Not yet",
                         files: files.length,
+                        lang: "Not specified",
+                        module: "Not configured",
                       }
                       setProjects([...projects, p])
                       openProject(p)
@@ -1697,9 +1759,9 @@ export default function App() {
                     }
                   }}
                 >
-                  {step === 5
+                  {step === 4
                     ? "Create Project"
-                    : step === 4
+                    : step === 3
                       ? "Continue to review"
                       : "Continue"}
                   <Icon name="arrow" size={15} />
@@ -3777,18 +3839,9 @@ export default function App() {
     )
   }
   function addFiles(incoming: File[]) {
-    const valid = incoming.filter((f) =>
-      /\.(v|sv|vh|svh|vhd|vhdl|zip)$/i.test(f.name),
-    )
-    setFileError(
-      valid.length !== incoming.length
-        ? "Unsupported file detected. Choose an HDL source file or ZIP archive."
-        : "",
-    )
-    setFiles((prev) => [
-      ...prev,
-      ...valid.filter((f) => !prev.some((p) => p.name === f.name)),
-    ])
+    if (incoming.length === 0) return
+    setFileError("")
+    setFiles((previous) => mergeProjectFiles(previous, projectFiles(incoming)))
   }
 
   return (

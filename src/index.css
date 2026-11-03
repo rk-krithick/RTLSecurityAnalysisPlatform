@@ -254,6 +254,11 @@ td strong { font-weight: 550; color: var(--text-strong); }
 .upload-zone h3 { font-size: var(--font-body); color: var(--text-strong); }
 .upload-zone p { font-size: var(--font-xs); color: var(--text-body); margin: 9px 0 17px; }
 .upload-zone small { display: block; font-size: var(--font-xs); color: var(--text-muted); margin-top: 17px; }
+.upload-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-3); }
+.upload-summary { color: var(--text-muted); font-size: var(--font-sm); margin-top: var(--space-4); }
+.uploaded-files { max-height: 320px; overflow-y: auto; }
+.uploaded-file > span { min-width: 0; }
+.uploaded-file code { overflow-wrap: anywhere; font-size: var(--font-xs); }
 .uploaded-file { display: flex; align-items: center; gap: 12px; padding: 15px 4px; border-bottom: 1px solid var(--border-subtle); color: var(--text-body); font-size: var(--font-sm); }
 .uploaded-file > span { flex: 1; }.uploaded-file small { display: block; color: var(--text-muted); margin-top: 4px; font-size: var(--font-xs); }
 .error-message { color: var(--status-danger); font-size: var(--font-sm); background: var(--surface-danger); border: 1px solid var(--border-subtle); padding: 12px; margin-top: 12px; border-radius: var(--radius-control); }
